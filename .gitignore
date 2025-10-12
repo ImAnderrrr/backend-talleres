@@ -1,0 +1,25 @@
+# Ignorar entorno y secretos locales
+.env
+.env.*
+!.env.example
+
+# Dependencias
+node_modules/
+
+# Carpeta de subidas y correos de vista previa
+uploads/
+emails/outbox/
+
+# Builds y temporales
+/dist/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.tmp/
+.temp/
+coverage/
+
+# Scripts locales de diagnóstico (no subir)
+/inspect*.js
