@@ -163,6 +163,8 @@ app.get('/health', (_req, res) => {
 });
 
 app.use('/auth', authRoutes);
+// Provide alias for auth endpoints to mitigate extension blocking heuristics
+app.use('/session', authRoutes);
 app.use('/banks', banksRoutes);
 app.use('/deposits', depositsRoutes);
 app.use('/workshops', workshopsRoutes);

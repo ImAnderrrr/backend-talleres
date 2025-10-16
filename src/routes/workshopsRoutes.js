@@ -8,6 +8,9 @@ const enrollmentsController = require('../controllers/enrollmentsController')
 router.get('/', workshopsController.listWorkshops)
 router.get('/:id', workshopsController.getWorkshopById)
 
+// Auth: my enrollments summary (to let frontend know remaining slots)
+router.get('/enrollments/me/summary', authMiddleware, enrollmentsController.listMyEnrollmentsSummary)
+
 // Admin: create, update, delete
 router.post('/', authMiddleware.requireAdmin, workshopsController.createWorkshop)
 router.put('/:id', authMiddleware.requireAdmin, workshopsController.updateWorkshop)

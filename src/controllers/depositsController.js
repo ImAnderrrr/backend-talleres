@@ -155,7 +155,11 @@ exports.getDepositsByEmail = async (req, res) => {
         [email]
       );
       const row = latestNonDeleted.rows[0] || null
-      if (row) return res.json(mapRow(row))
+      if (row) {
+        const mapped = mapRow(row)
+        if (mapped && mapped.fileName) mapped.fileUrl = `/uploads/${mapped.fileName}`
+        return res.json(mapped)
+      }
 
       // fallback: latest reviewed, but ignore owner-deleted resets
       const reviewed = await db.query(
@@ -168,7 +172,12 @@ exports.getDepositsByEmail = async (req, res) => {
       );
       const r = reviewed.rows[0] || null
       if (r && r.owner_deleted) return res.json(null)
-      return res.json(r ? mapRow(r) : null)
+      if (r) {
+        const mapped = mapRow(r)
+        if (mapped && mapped.fileName) mapped.fileUrl = `/uploads/${mapped.fileName}`
+        return res.json(mapped)
+      }
+      return res.json(null)
     }
 
     // Admin: prefer latest non-deleted; if none, fall back to latest reviewed (approved/rejected) even if soft-deleted
@@ -181,7 +190,9 @@ exports.getDepositsByEmail = async (req, res) => {
       [email]
     );
     if (latestNonDeleted.rows[0]) {
-      return res.json(mapRow(latestNonDeleted.rows[0]));
+      const mapped = mapRow(latestNonDeleted.rows[0])
+      if (mapped && mapped.fileName) mapped.fileUrl = `/uploads/${mapped.fileName}`
+      return res.json(mapped);
     }
 
     const reviewed = await db.query(
@@ -193,7 +204,12 @@ exports.getDepositsByEmail = async (req, res) => {
       [email]
     );
     const row = reviewed.rows[0] || null
-    return res.json(row ? mapRow(row) : null)
+    if (row) {
+      const mapped = mapRow(row)
+      if (mapped && mapped.fileName) mapped.fileUrl = `/uploads/${mapped.fileName}`
+      return res.json(mapped)
+    }
+    return res.json(null)
   } catch (err) {
     console.error('Error consultando depósitos:', err);
     return res.status(500).json({ message: 'Ocurrió un error al consultar los depósitos.' });

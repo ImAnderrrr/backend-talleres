@@ -70,33 +70,12 @@ exports.enrollInWorkshop = async (req, res) => {
 
     await db.query('COMMIT');
 
-    // Side-effects (non-blocking): activity log + confirmation email
+    // Side-effects (non-blocking): activity log (email removed by request)
     ;(async () => {
       try {
   const { createActivity } = require('./activitiesController');
   createActivity({ actorEmail: u.email || user.email, actorId: user.id, type: 'workshop.enroll', payload: { workshopId, studentName: (u.full_name && String(u.full_name).trim()) || null } });
       } catch (_) {}
-      try {
-        const { sendEnrollmentConfirmation } = require('../services/emailService');
-        // Fetch workshop details to populate email
-  const wRes = await db.query("SELECT id, title, to_char(date AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS date_ymd, time, location FROM workshops WHERE id = $1", [workshopId]);
-        const w = wRes.rows[0] || {};
-        const event = {
-          id: w.id,
-          title: w.title || 'Taller',
-          date: w.date_ymd,
-          time: w.time,
-          location: w.location || ''
-        };
-        await sendEnrollmentConfirmation({
-          to: (u.email || user.email),
-          event,
-          studentName: (u.full_name && String(u.full_name).trim()) || null,
-          carnet: (u.carnet_number && String(u.carnet_number).trim()) || null
-        });
-      } catch (e) {
-        console.warn('Enrollment email failed:', e && e.message ? e.message : e);
-      }
     })();
 
     return res.status(201).json({ enrollment: mapEnrollment(insRes.rows[0]) });
@@ -210,5 +189,30 @@ exports.unenrollFromWorkshop = async (req, res) => {
     console.error('Error unenrolling from workshop:', err);
     try { await db.query('ROLLBACK'); } catch {}
     return res.status(500).json({ message: 'Error al desinscribirse.' });
+  }
+};
+
+// Summary for current user: list of enrolled workshop IDs (approved) and max concurrent limit
+exports.listMyEnrollmentsSummary = async (req, res) => {
+  try {
+    if (!req.user) return res.status(401).json({ message: 'No autenticado' });
+    const userId = req.user.id;
+    const { rows } = await db.query(
+      `SELECT workshop_id FROM workshop_enrollments
+        WHERE user_id = $1 AND payment_status = 'approved' 
+        ORDER BY enrolled_at DESC`,
+      [userId]
+    );
+    const workshopIds = rows.map(r => String(r.workshop_id));
+    const rawMax = parseInt(String(process.env.MAX_CONCURRENT_ENROLLMENTS || process.env.MAX_WORKSHOPS_PER_STUDENT || '1'), 10);
+    const maxConcurrentEnrollments = Number.isFinite(rawMax) && rawMax > 0 ? rawMax : 1;
+    return res.json({
+      count: workshopIds.length,
+      workshopIds,
+      maxConcurrentEnrollments,
+    });
+  } catch (err) {
+    console.error('Error getting my enrollments summary:', err);
+    return res.status(500).json({ message: 'Error obteniendo inscripciones.' });
   }
 };
